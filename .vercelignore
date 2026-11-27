@@ -1,0 +1,6 @@
+.data/
+.env
+.env.*
+README.md
+dev.js
+server/local-store.js
