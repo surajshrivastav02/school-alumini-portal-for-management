@@ -21,7 +21,7 @@ function adminConfig() {
 }
 function member(db, identity, admin) {
   if (admin && identity === 'admin:' + digest(admin.email + '\0' + admin.password)) return admin;
-  return db.users.find(u => u.id === identity);
+  return db.users.find(u => u.id === identity && !(admin && u.role === 'admin'));
 }
 function sessionKey(req) {
   const token = req.headers.get('cookie')?.match(/(?:^|;\s*)alumni_session=([a-f0-9]{64})(?:;|$)/)?.[1];
@@ -77,6 +77,26 @@ export function createHandler(store) {
         if (key) await store.remove(key);
         return reply({ me: null }, 200, cookie(req, '', 0));
       }
+      if (action === 'activateAdmin') {
+        const [hash, deadline] = (process.env.ADMIN_SETUP || '').split('.');
+        const address = email(body.email);
+        const remote = req.headers.get('x-vercel-forwarded-for')?.split(',')[0].trim() || 'local';
+        await limit(store, 'setup', address, remote);
+        check(!admin && /^[a-f0-9]{64}$/.test(hash) && Date.now() < Number(deadline)
+          && typeof body.invite === 'string' && /^[a-f0-9]{64}$/.test(body.invite)
+          && same(digest(body.invite), hash), 'This setup link is invalid or expired.', 403);
+        check(typeof body.password === 'string' && body.password.length >= 12 && body.password.length <= 200,
+          'Choose a password with 12 to 200 characters.');
+        const passwordHash = await encodePassword(body.password);
+        const view = await transaction(store, db => {
+          check(!db.users.some(u => u.role === 'admin'), 'The administrator account has already been activated.', 409);
+          check(!db.users.some(u => u.email === address), 'Choose an email that is not registered to a member.', 409);
+          const user = { id: 'admin', name: 'Administrator', email: address, role: 'admin', school: '', hash: passwordHash };
+          db.users.push(user);
+          return snapshot(db, user);
+        });
+        return reply(view, 200, await issueSession(req, store, 'admin'));
+      }
       if (action === 'register' || action === 'login') {
         const address = email(body.email);
         const remote = req.headers.get('x-vercel-forwarded-for')?.split(',')[0].trim() || 'local';
@@ -98,7 +118,7 @@ export function createHandler(store) {
           if (admin && address === admin.email && same(admin.password, body.password)) {
             identity = 'admin:' + digest(admin.email + '\0' + admin.password);
           } else {
-            const user = data.users.find(u => u.email === address && u.email !== admin?.email);
+            const user = data.users.find(u => u.email === address && u.email !== admin?.email && !(admin && u.role === 'admin'));
             const derived = await encodePassword(body.password, user?.hash.split(':')[0] || '6a7545c147ed325bcf47568a12d491f5');
             check(user && same(derived, user.hash), 'The email or password is incorrect.', 401);
             identity = user.id;

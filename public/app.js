@@ -57,6 +57,12 @@ function alumniFields(row={}) {
     ${input('Current city (optional)','city',row.city,'maxlength="80" placeholder="e.g. Pune"')}
     ${row.owner === null ? '<p class="hint">Mentorship requests require a registered alumni account.</p>' : `<label class="check"><input type="checkbox" name="mentoring" ${row.mentoring?'checked':''}> Open to mentorship requests</label>`}`;
 }
+function adminSetupPage() {
+  return header() + '<main class="gate" id="main"><div class="photo"><img src="assets/lpu-open-air-theatre.webp" alt="The LPU open-air theatre" width="980" height="654"></div><section class="gate-side"><header><h1>Set up your administrator account</h1><p>Choose the email and password you will use to manage alumni, events and reports.</p></header><form class="form-grid" data-form="activateAdmin">' +
+    input('Administrator email','email','','autocomplete="email" maxlength="254" required','email') +
+    passwordField(true).replace('minlength="10"','minlength="12"').replace('At least 10 characters','At least 12 characters') +
+    noError() + '<button class="btn" type="submit">Activate administrator account</button></form></section></main>' + footer(true);
+}
 function authPage() {
   const reg = state.auth === 'register';
   const fields = `${reg ? input('Full name','name','','autocomplete="name" minlength="2" maxlength="80" required') : ''}
@@ -170,6 +176,11 @@ function noteList(list) {
   return list.length?`<ul class="items">${list.map(n=>`<li><p>${e(n.message)}</p><small>${niceDate(n.at)}</small></li>`).join('')}</ul>`:empty('No notifications yet.');
 }
 function draw() {
+  if (adminInvite) {
+    document.title = 'Administrator setup · School Alumini Portal for Management';
+    site.innerHTML=adminSetupPage();
+    return;
+  }
   const d=state.data;
   const pages={dashboard,alumni:directory,schools:schoolsPage,mentorship,events,insights,
     notes:data=>pageHead('Notifications','Updates on your registrations and mentorship activity.')+`<section class="panel">${noteList(data.notifications)}</section>`};
@@ -217,6 +228,7 @@ async function api(action,body={}) {
 }
 async function refresh(initial=false) {
   if ((state.sample && !initial) || state.busy || dialog.open || location.protocol==='file:') return;
+  if (adminInvite) return;
   const revision=viewRevision;
   try {
     const data=await api();
@@ -255,12 +267,13 @@ async function commit(action,body,success,form) {
   if (trigger) trigger.disabled=true;
   try {
     const data=state.sample?sampleChange(action,body):await api(action,body);
+    if (action==='activateAdmin') adminInvite='';
     if (dialog.open) dialog.close();
     state.connectionError='';
     if (action==='logout') setGuest();
     else {
       state.data=data;
-      if (['login','register'].includes(action)) navigate('dashboard');
+      if (['login','register','activateAdmin'].includes(action)) navigate('dashboard');
       else draw();
     }
     if (success) toast(success);
@@ -306,7 +319,7 @@ document.addEventListener('click',event=>{
   if (action==='auth') {state.auth=id;draw();return;}
   if (action==='startRegister') {setGuest('register');return;}
   if (action==='sample') {
-    viewRevision++;state.sample=true;state.data=window.sampleNetwork();state.status='';state.chartSchool='';
+    adminInvite='';viewRevision++;state.sample=true;state.data=window.sampleNetwork();state.status='';state.chartSchool='';
     navigate('dashboard');return;
   }
   if (action==='page') {navigate(id);refresh();return;}
@@ -363,10 +376,11 @@ document.addEventListener('submit',event=>{
   event.preventDefault();
   if (state.busy) return;
   const fields=Object.fromEntries(new FormData(form));
+  if (form.dataset.form === 'activateAdmin') fields.invite=adminInvite;
   if (form.dataset.id) fields.id=form.dataset.id;
   if (form.dataset.entryId) fields.entryId=form.dataset.entryId;
   if (form.elements.mentoring) fields.mentoring=form.elements.mentoring.checked;
-  const messages={register:'Account created.',login:'Logged in.',request:'Mentorship request sent.',profile:'Alumni profile saved.',
+  const messages={activateAdmin:'Administrator account activated.',register:'Account created.',login:'Logged in.',request:'Mentorship request sent.',profile:'Alumni profile saved.',
     session:'Session recorded.',status:'Mentorship updated.',event:'Event saved.',attendance:'Registration updated.',removeEvent:'Event removed.',removeProfile:'Profile removed.'};
   commit(form.dataset.form,fields,messages[form.dataset.form],form);
 });
@@ -405,6 +419,12 @@ document.addEventListener('keydown',event=>{
    event.preventDefault();atlasSearch();
  }
 });
+let adminInvite = /^#activate=([a-f0-9]{64})$/.exec(location.hash)?.[1] || '';
+if (adminInvite) {
+  state.data=null;
+  state.sample=false;
+  history.replaceState(null,'',location.pathname+location.search);
+}
 if(Object.hasOwn(tabs,location.hash.slice(1)))state.page=location.hash.slice(1);
 draw();
 refresh(true);

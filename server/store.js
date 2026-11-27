@@ -31,7 +31,7 @@ const countAttempt = `
   return hits`;
 
 export function redisStore() {
-  const prefix = 'school-alumni:v1:';
+  const prefix = 'school-alumini-portal-for-management:v1:';
   const url = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
   async function command(...args) {

@@ -25,7 +25,7 @@ Double-click `public/index.html` to explore the sample immediately. Use the acco
 
 1. Open the project in Vercel. Under **Storage** select **Connect Database** or install [Upstash for Redis](https://vercel.com/marketplace/upstash/upstash-kv). Create a dedicated database for this portal, choose a plan within your budget, and connect it to the project's **Production** environment.
 2. The server reads the integration's `KV_REST_API_URL` and `KV_REST_API_TOKEN` or `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`. If connecting manually, put the URL and read/write token in **Settings → Environment Variables**.
-3. In the same settings, add `ADMIN_EMAIL` and a unique `ADMIN_PASSWORD` of at least 12 characters. The administrator signs in through the normal member form. Keep these values in Vercel.
+3. For a new self-hosted installation, add `ADMIN_EMAIL` and a unique `ADMIN_PASSWORD` of at least 12 characters. The administrator signs in through the normal member form. Keep these values in Vercel.
 4. Go to **Deployments**, open the latest production deployment's menu and choose **Redeploy**. Open the site, then **Student demo → Create account**. Register an alumnus with a school, graduation year, profession and mentorship preference. The live directory starts empty.
 5. Open a private browser window and register a student from a different school. Request mentorship from the alumnus. In the alumni account, open **Mentorship** and approve the request. Either participant can log a session and next step. Returning users can choose **Student demo → Member sign in**.
 6. Sign in as the administrator to maintain directory entries, publish events, review registrations, and inspect reporting. Email addresses are reserved for sign-in. School affiliation is self-reported.
@@ -41,6 +41,12 @@ npm start
 ```
 
 Open **http://localhost:3000**. Local records are saved in `.data/`; local sign-in sessions expire when the development server restarts. To use the administrator view locally, set `ADMIN_EMAIL` and `ADMIN_PASSWORD` in a local `.env` file and restart the server. All website assets ship in the project.
+
+## First administrator on the published portal
+
+If the owner requested an administrator invitation, open the private, single-use link supplied with the deployment. Set an email address and a password of at least 12 characters. It opens the live management dashboard immediately. For subsequent visits, select **Student demo → Member sign in**. The invitation expires after seven days and stops working as soon as the administrator account is created.
+
+For a separate installation, the environment-variable administrator described above also works without an invitation. The deployment uses a dedicated Redis key prefix so this portal keeps its own accounts, sessions and records.
 
 ## Photo credits
 
